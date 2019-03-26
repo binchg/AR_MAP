@@ -1,5 +1,6 @@
 package com.king.ar_map;
 
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -8,6 +9,7 @@ import android.os.Message;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -104,8 +106,59 @@ public class MainActivity extends Activity  {
         //06-10
         classroom_loc.add("106.301612,29.595036");
         classroom_loc.add("106.301692,29.595092");
-
-//        classroom_loc.add("");
+        classroom_loc.add("106.301662,29.595008");
+        classroom_loc.add("106.301802,29.59498");
+        classroom_loc.add("106.301796,29.595115");
+        //11-15
+        classroom_loc.add("106.301823,29.594989");
+        classroom_loc.add("106.301893,29.59512");
+        classroom_loc.add("106.301968,29.594989");
+        classroom_loc.add("106.302048,29.595124");
+        classroom_loc.add("106.302102,29.595003");
+        //16-20
+        classroom_loc.add("106.302204,29.595138");
+        classroom_loc.add("106.302579,29.594984");
+        classroom_loc.add("106.302585,29.595143");
+        classroom_loc.add("106.302708,29.594989");
+        classroom_loc.add("106.302853,29.595101");
+        //21-25
+        classroom_loc.add("106.30296,29.594975");
+        classroom_loc.add("106.302558,29.595115");
+        classroom_loc.add("106.302655,29.59498");
+        classroom_loc.add("106.302778,29.595124");
+        classroom_loc.add("106.302966,29.595245");
+        //26-30
+        classroom_loc.add("106.303078,29.595124");
+        classroom_loc.add("106.303186,29.594924");
+        classroom_loc.add("106.303293,29.594914");
+        classroom_loc.add("106.303368,29.594891");
+        classroom_loc.add("106.303406,29.59491");
+        //31-35
+        classroom_loc.add("106.303465,29.595437");
+        classroom_loc.add("106.30317,29.595381");
+        classroom_loc.add("106.303255,29.595497");
+        classroom_loc.add("106.303003,29.595521");
+        classroom_loc.add("106.302858,29.595465");
+        //36-40
+        classroom_loc.add("106.302322,29.595502");
+        classroom_loc.add("106.302322,29.595502");
+        classroom_loc.add("106.30214,29.595427");
+        classroom_loc.add("106.301952,29.595409");
+        classroom_loc.add("106.301694,29.595259");
+        //41-45
+        classroom_loc.add("106.301764,29.595516");
+        classroom_loc.add("106.301651,29.595455");
+        classroom_loc.add("106.301657,29.595567");
+        classroom_loc.add("106.301474,29.595502");
+        classroom_loc.add("106.301507,29.595661");
+        //46-50
+        classroom_loc.add("106.301362,29.595511");
+        classroom_loc.add("106.301383,29.595675");
+        classroom_loc.add("106.301254,29.595567");
+        classroom_loc.add("106.301383,29.595675");
+        classroom_loc.add("106.301126,29.595619");
+        //51
+        classroom_loc.add("106.301083,29.595796");
 
     }
 
@@ -227,21 +280,23 @@ public class MainActivity extends Activity  {
     }
 
     private void inti_view(){
-
-
-
-
         editText_classroomnum=findViewById(R.id.editText_classroomnum);
         //监听回车确认键
         editText_classroomnum.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.toggleSoftInput(0, InputMethodManager.HIDE_NOT_ALWAYS);
+
                 //Toast.LENGTH_LONG表示显示时间长  Toast.LENGTH_SHORT表示显示时间短
                 Log.i("dddd",editText_classroomnum.getText()+"");
                 addMoreMarket(0);
                 String classroomnum=textView_classroomid.getText().toString()+editText_classroomnum.getText().toString();
                 String tmep=editText_classroomnum.getText().toString().substring(1,3);
                 int classroom_num=Integer.parseInt(tmep);
+                if(classroom_num>51 || classroom_num<1){
+                    return false;
+                }
                 Log.i("dddd",classroom_num+"");
                 String xys=classroom_loc.get(classroom_num-1);
                 String[] xy=classroom_loc.get(classroom_num-1).split(",");
@@ -304,12 +359,14 @@ public class MainActivity extends Activity  {
                 if(arg2==0)
                 {
                     textView_classroomid.setText(crid[arg2]);
-//                    editText_classroomnum.setFocusableInTouchMode(false);
-            }
+                    editText_classroomnum.setVisibility(View.INVISIBLE);//view1处于不可见状态
+
+
+                }
                 if(arg2==1)
                 {
                     textView_classroomid.setText(crid[arg2]);
-//                    editText_classroomnum.requestFocus();
+                    editText_classroomnum.setVisibility(View.VISIBLE);//view1处于不可见状态
 
                     movelocation(arg2);
 
@@ -317,7 +374,7 @@ public class MainActivity extends Activity  {
                 if(arg2==2)
                 {
                     textView_classroomid.setText(crid[arg2]);
-//                    editText_classroomnum.requestFocus();
+                    editText_classroomnum.setVisibility(View.VISIBLE);//view1处于不可见状态
 
                     movelocation(arg2);
 
@@ -342,6 +399,9 @@ public class MainActivity extends Activity  {
         bt_find.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if(aMap.getMapScreenMarkers().get(0).getPosition().latitude==+aMap.getMyLocation().getLatitude()){
+                    return;
+                }
                 Intent i1 = new Intent();
                 String url="baidumap://map/walknavi?origin="
                         +aMap.getMyLocation().getLatitude()+","
