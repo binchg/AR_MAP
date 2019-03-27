@@ -409,7 +409,7 @@ public class MainActivity extends Activity  {
                         +"&destination="
                         +aMap.getMapScreenMarkers().get(0).getPosition().latitude+","
                         +aMap.getMapScreenMarkers().get(0).getPosition().longitude
-                        +"&coord_type=bd09ll&src=andr.baidu.openAPIdemo";
+                        +"&coord_type=wgs84&src=andr.baidu.openAPIdemo";
                 Log.i("dddd",url);
                 i1.setData(Uri.parse(url));
                 startActivity(i1);
