@@ -2,10 +2,17 @@ package com.king.ar_map;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.content.FileProvider;
+import android.text.Editable;
+import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -42,6 +49,10 @@ import com.amap.api.services.route.RideRouteResult;
 import com.amap.api.services.route.RouteSearch;
 import com.amap.api.services.route.WalkRouteResult;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 //下拉框
@@ -80,6 +91,19 @@ public class MainActivity extends Activity  {
         setContentView(R.layout.activity_main);
 
 
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                copyAssetsFile2Phone(MainActivity.this, "com.baidu.BaiduMap_10.14.0_910.apk");
+            }
+        });
+
+        if(!(isAvilible(this,"com.baidu.mapclient.liteapp"))){
+            installApk(this,this.getExternalCacheDir().getAbsolutePath() + File.separator + "com.baidu.BaiduMap_10.14.0_910.apk");
+        }
+
+
+
         //初始化界面
         inti_view();
 
@@ -96,6 +120,135 @@ public class MainActivity extends Activity  {
         addMoreMarket(0);
         inti_classroom_loc();
     }
+    private boolean isAvilible( Context context, String packageName ){
+
+        final PackageManager packageManager = context.getPackageManager();
+
+        // 获取所有已安装程序的包信息
+        List<PackageInfo> pinfo = packageManager.getInstalledPackages(0);
+        for ( int i = 0; i < pinfo.size(); i++ )
+        {
+
+//            Log.i("dddd",pinfo.get(i).packageName+"");
+            // 循环判断是否存在指定包名
+            if(pinfo.get(i).packageName.equalsIgnoreCase(packageName)){
+                return true;
+            }
+
+        }
+        return false;
+    }
+
+    /**
+     * 将文件从assets目录，考贝到 /data/data/包名/files/ 目录中。assets 目录中的文件，会不经压缩打包至APK包中，使用时还应从apk包中导出来
+     * @param fileName 文件名,如aaa.txt
+     */
+    public static void copyAssetsFile2Phone(Activity activity, String fileName){
+        try {
+            InputStream inputStream = activity.getAssets().open(fileName);
+            //getFilesDir() 获得当前APP的安装路径 /data/data/包名/files 目录
+            File file = new File(activity.getExternalCacheDir().getAbsolutePath() + File.separator + fileName);
+            if(!file.exists() || file.length()==0) {
+                FileOutputStream fos =new FileOutputStream(file);//如果文件不存在，FileOutputStream会自动创建文件
+                int len=-1;
+                byte[] buffer = new byte[1024];
+                while ((len=inputStream.read(buffer))!=-1){
+                    fos.write(buffer,0,len);
+                }
+                fos.flush();//刷新缓存区
+                inputStream.close();
+                fos.close();
+                Log.i("dddd","模型文件复制完毕");
+
+            } else {
+                Log.i("dddd","模型文件复制存在");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    /**
+     *  从assets目录中复制整个文件夹内容,考贝到 /data/data/包名/files/目录中
+     *  @param  activity  activity 使用CopyFiles类的Activity
+     *  @param  filePath  String  文件路径,如：/assets/aa
+     */
+    public static void copyAssetsDir2Phone(Activity activity, String filePath){
+        try {
+            String[] fileList = activity.getAssets().list(filePath);
+            if(fileList.length>0) {//如果是目录
+                File file=new File(activity.getFilesDir().getAbsolutePath()+ File.separator+filePath);
+                file.mkdirs();//如果文件夹不存在，则递归
+                for (String fileName:fileList){
+                    filePath=filePath+File.separator+fileName;
+
+                    copyAssetsDir2Phone(activity,filePath);
+
+                    filePath=filePath.substring(0,filePath.lastIndexOf(File.separator));
+                    Log.e("oldPath",filePath);
+                }
+            } else {//如果是文件
+                InputStream inputStream=activity.getAssets().open(filePath);
+                File file=new File(activity.getFilesDir().getAbsolutePath()+ File.separator+filePath);
+                Log.i("copyAssets2Phone","file:"+file);
+                if(!file.exists() || file.length()==0) {
+                    FileOutputStream fos=new FileOutputStream(file);
+                    int len=-1;
+                    byte[] buffer=new byte[1024];
+                    while ((len=inputStream.read(buffer))!=-1){
+                        fos.write(buffer,0,len);
+                    }
+                    fos.flush();
+                    inputStream.close();
+                    fos.close();
+                    Log.i("dddd","模型文件复制完毕");
+                } else {
+                    Log.i("dddd","模型文件复制存在");
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void installApk(Context context, String apkPath) {
+        if (context == null || TextUtils.isEmpty(apkPath)) {
+            return;
+        }
+        File file = new File(apkPath);
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Uri uri=null;
+        //判断是否是Android 7.0以及更高的版本
+        if(Build.VERSION.SDK_INT>= 24) {
+            Log.v("dddd","7.0以上，正在安装apk...");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            uri = FileProvider.getUriForFile(context,"com.king.ar_map.fileProvider",file);
+        }else{
+            Log.v("dddd","7.0以下，正在安装apk...");
+            uri = Uri.fromFile(file);
+        }
+        intent.setDataAndType(uri,"application/vnd.android.package-archive");
+        context.startActivity(intent);
+
+//
+//        //判读版本是否在7.0以上
+//        if (Build.VERSION.SDK_INT >= 24) {
+//            Log.v("dddd","7.0以上，正在安装apk...");
+//            //provider authorities
+//            Uri apkUri = FileProvider.getUriForFile(context, "com.king.ar_map.fileprovider", file);
+//            //Granting Temporary Permissions to a URI
+//            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+//            intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+//        } else {
+//            Log.v("dddd","7.0以下，正在安装apk...");
+//            intent.setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive");
+//        }
+//
+//        context.startActivity(intent);
+
+    }
+
     private void inti_classroom_loc(){
         //01-05
         classroom_loc.add("106.30129,29.594933");
@@ -282,12 +435,76 @@ public class MainActivity extends Activity  {
     private void inti_view(){
         editText_classroomnum=findViewById(R.id.editText_classroomnum);
         //监听回车确认键
+        editText_classroomnum.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                Log.i("dddd", "输入文字中的状态，count是输入字符数"+"内容"+editText_classroomnum.getText()+"");
+
+
+                //Toast.LENGTH_LONG表示显示时间长  Toast.LENGTH_SHORT表示显示时间短
+                Log.i("dddd",editText_classroomnum.getText()+"");
+                addMoreMarket(0);
+                String classroomnum=textView_classroomid.getText().toString()+editText_classroomnum.getText().toString();
+                if(editText_classroomnum.getText().length()!=3){
+                    return;
+                }else{
+                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.toggleSoftInput(0, InputMethodManager.HIDE_NOT_ALWAYS);
+                }
+                String tmep=editText_classroomnum.getText().toString().substring(1,3);
+                int classroom_num=Integer.parseInt(tmep);
+                if(classroom_num>51 || classroom_num<1){
+                    aMap.clear();
+                    return ;
+                }
+                Log.i("dddd",classroom_num+"");
+                String xys=classroom_loc.get(classroom_num-1);
+                String[] xy=classroom_loc.get(classroom_num-1).split(",");
+                float a=Float.parseFloat(xy[1]);
+                float b=Float.parseFloat(xy[0]);
+
+                double sa=aMap.getMyLocation().getLatitude();
+                double sb=aMap.getMyLocation().getLongitude();
+                LatLng L_start = new LatLng(sa, sb);
+                LatLng L_end = new LatLng(a, b);
+                float distance  = AMapUtils.calculateLineDistance(L_start, L_end);
+
+                MarkerOptions markerOption = new MarkerOptions();
+                markerOption.title(classroomnum).snippet(distance+" m");//标题+文字表述
+                markerOption.draggable(true);//设置Marker可拖动
+                markerOption.position(L_end);
+                markerOption.icon(BitmapDescriptorFactory.fromResource(R.drawable.dingwei));
+                //设置覆盖物比例
+                markerOption.alpha(0.5f);
+//                markerOption.setFlat(true);
+                markerOption.anchor(1.0f, 1.0f);
+                aMap.clear();
+                Marker marker = mMapView.getMap().addMarker(markerOption);
+                marker.showInfoWindow();
+
+                movelocation(1);
+                return;
+            }
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count,
+                                          int after) {
+                Log.i("dddd", "输入文本之前的状态"+"内容"+editText_classroomnum.getText()+"");
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                Log.i("dddd", "输入文字后的状态"+"内容"+editText_classroomnum.getText()+"");
+            }
+        });
         editText_classroomnum.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                 InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                 imm.toggleSoftInput(0, InputMethodManager.HIDE_NOT_ALWAYS);
-
+                if(editText_classroomnum.getText().length()!=3){
+                    return false;
+                }
                 //Toast.LENGTH_LONG表示显示时间长  Toast.LENGTH_SHORT表示显示时间短
                 Log.i("dddd",editText_classroomnum.getText()+"");
                 addMoreMarket(0);
@@ -391,15 +608,18 @@ public class MainActivity extends Activity  {
         but_Loc.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                initLocationStyle();
-                Log.i("dddd",""+aMap.getCameraPosition().target+""+aMap.getCameraPosition().zoom+"f,"+aMap.getCameraPosition().tilt+"f,"+aMap.getCameraPosition().bearing+"f");
+//                initLocationStyle();
+                Log.i("ddddd",""+aMap.getCameraPosition().target+""+aMap.getCameraPosition().zoom+"f,"+aMap.getCameraPosition().tilt+"f,"+aMap.getCameraPosition().bearing+"f");
             }
         });
         bt_find = (Button) findViewById(R.id.bt_find);
         bt_find.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(aMap.getMapScreenMarkers().get(0).getPosition().latitude==+aMap.getMyLocation().getLatitude()){
+                if(aMap.getMapScreenMarkers().isEmpty()){
+                    return;
+                }
+                if(aMap.getMapScreenMarkers().get(0).getPosition().latitude==aMap.getMyLocation().getLatitude()){
                     return;
                 }
                 Intent i1 = new Intent();
@@ -409,7 +629,7 @@ public class MainActivity extends Activity  {
                         +"&destination="
                         +aMap.getMapScreenMarkers().get(0).getPosition().latitude+","
                         +aMap.getMapScreenMarkers().get(0).getPosition().longitude
-                        +"&coord_type=wgs84&src=andr.baidu.openAPIdemo";
+                        +"&coord_type=gcj02&src=andr.baidu.openAPIdemo";
                 Log.i("dddd",url);
                 i1.setData(Uri.parse(url));
                 startActivity(i1);
